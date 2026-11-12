@@ -1,7 +1,7 @@
 /* PrixHook — interface (saisie, liste, import, réglages, aperçu) */
 (function () {
   const P = PH.pricing, R = PH.render, X = PH.exporter;
-  const VERSION = '0.4.1';
+  const VERSION = '0.5.0';
   const KEY = 'prixhook.v2';
   const DEF = { cut: true };
 
@@ -252,25 +252,26 @@
     renderAll();
   }
 
-  /* ---------- Aperçu ---------- */
-  let pagesCache = [];
+  /* ---------- Aperçu (canvas, identique au PDF) ---------- */
+  let previewJob = 0;
 
-  function renderPreview() {
-    const html = R.pages(state.tags, state.settings);
-    $('#sheet').innerHTML = html.join('');
-    $('#pageCount').textContent = `(${html.length})`;
-    fitPreview();
+  async function renderPreview() {
+    const job = ++previewJob;
+    const pages = R.paginate(state.tags);
+    $('#pageCount').textContent = `(${pages.length})`;
+    await R.fontsReady();
+    if (job !== previewJob) return;
+    const sheet = $('#sheet');
+    sheet.innerHTML = '';
+    const res = Math.min(8, 4 * (window.devicePixelRatio || 1));
+    pages.forEach(hooks => {
+      const c = R.drawPage(hooks, res, state.settings.cut);
+      c.className = 'page-canvas';
+      sheet.appendChild(c);
+    });
   }
 
-  function fitPreview() {
-    const wrap = $('#previewWrap'), sheet = $('#sheet');
-    if (!wrap.offsetWidth) return;
-    R.fit(sheet);
-    pagesCache = Array.from(sheet.children).map(p => p.outerHTML);
-    const scale = Math.min(1, wrap.clientWidth / (210 * 96 / 25.4));
-    sheet.style.transform = `scale(${scale})`;
-    wrap.style.height = (sheet.scrollHeight * scale) + 'px';
-  }
+  function fitPreview() { /* l'aperçu s'adapte seul à la largeur */ }
 
   function renderAll() {
     renderList();
@@ -285,11 +286,10 @@
 
   async function onPdf() {
     const msg = $('#pdfMsg'), btn = $('#pdfBtn');
-    fitPreview();
     if (!state.tags.some(R.valid)) { msg.textContent = 'Aucun hook complet à exporter.'; return; }
     btn.disabled = true;
     try {
-      await X.pdf(pagesCache, fileName(), (i, n) => { msg.textContent = `Génération de la page ${i}/${n}…`; });
+      await X.pdf(R.paginate(state.tags), state.settings.cut, fileName(), (i, n) => { msg.textContent = `Génération de la page ${i}/${n}…`; });
       msg.textContent = 'PDF prêt.';
     } catch (e) {
       const m = e && e.message ? e.message : String(e);
@@ -303,7 +303,6 @@
   function setTab(name) {
     $$('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
     $$('.tab').forEach(t => t.classList.toggle('on', t.id === 'tab-' + name));
-    if (name === 'preview') requestAnimationFrame(fitPreview);
   }
 
   /* ---------- Démarrage ---------- */
@@ -319,9 +318,8 @@
     $('#importBtn').addEventListener('click', onImport);
     $('#exportJson').addEventListener('click', onBackup);
     $('#pdfBtn').addEventListener('click', onPdf);
-    $('#printBtn').addEventListener('click', () => { fitPreview(); X.print(pagesCache); });
+    $('#printBtn').addEventListener('click', () => X.print(R.paginate(state.tags), state.settings.cut));
     $('#fileInput').addEventListener('change', onFiles);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitPreview);
     if (X.isNative()) $('#printBtn').hidden = true;
     $('#setCut').checked = state.settings.cut;
     $('#setCut').addEventListener('change', () => {
@@ -329,7 +327,6 @@
       save();
       renderPreview();
     });
-    window.addEventListener('resize', fitPreview);
     renderAll();
   }
 

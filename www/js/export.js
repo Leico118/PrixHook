@@ -1,37 +1,26 @@
-/* PrixHook — export PDF A4 (html2canvas + jsPDF), impression, partage sur Android (Capacitor) */
+/* PrixHook — export PDF A4 (pages dessinées à 300 dpi + jsPDF), impression, partage sur Android */
 window.PH = window.PH || {};
 
 PH.exporter = (function () {
+  const DPI300 = 300 / 25.4;
+
   function isNative() {
     const c = window.Capacitor;
     return !!(c && c.isNativePlatform && c.isNativePlatform());
   }
 
-  /* pagesHtml : tableau de chaînes HTML (pages déjà ajustées), une par page A4 */
-  async function pdf(pagesHtml, filename, onProgress) {
-    await PH.libs.ensure('html2canvas', 'jspdf');
-    if (document.fonts && document.fonts.ready) await document.fonts.ready;
-
-    const host = document.createElement('div');
-    host.className = 'export-host';
-    document.body.appendChild(host);
-
+  /* pages : tableaux de hooks (12 max par page) */
+  async function pdf(pages, cut, filename, onProgress) {
+    await PH.libs.ensure('jspdf');
+    await PH.render.fontsReady();
     const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
-    try {
-      for (let i = 0; i < pagesHtml.length; i++) {
-        if (onProgress) onProgress(i + 1, pagesHtml.length);
-        host.innerHTML = pagesHtml[i];
-        const page = host.firstElementChild;
-        PH.render.fit(page);
-        const canvas = await window.html2canvas(page, {
-          scale: 3, backgroundColor: '#ffffff', useCORS: true,
-          scrollX: 0, scrollY: 0, windowWidth: page.scrollWidth, windowHeight: page.scrollHeight
-        });
-        if (i > 0) doc.addPage();
-        doc.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
-      }
-    } finally {
-      host.remove();
+    for (let i = 0; i < pages.length; i++) {
+      if (onProgress) onProgress(i + 1, pages.length);
+      const c = PH.render.drawPage(pages[i], DPI300, cut);
+      if (i > 0) doc.addPage();
+      doc.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+      c.width = 0; c.height = 0;
+      await new Promise(r => setTimeout(r, 0));
     }
 
     if (isNative()) {
@@ -44,10 +33,17 @@ PH.exporter = (function () {
     }
   }
 
-  function print(pagesHtml) {
+  async function print(pages, cut) {
+    await PH.render.fontsReady();
     const area = document.getElementById('printArea');
-    area.innerHTML = pagesHtml.join('');
-    setTimeout(() => window.print(), 50);
+    area.innerHTML = '';
+    pages.forEach(hooks => {
+      const img = new Image();
+      img.className = 'print-page';
+      img.src = PH.render.drawPage(hooks, DPI300, cut).toDataURL('image/jpeg', 0.92);
+      area.appendChild(img);
+    });
+    setTimeout(() => window.print(), 300);
   }
 
   return { pdf, print, isNative };
