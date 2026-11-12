@@ -1,7 +1,7 @@
 /* PrixHook — interface (saisie, liste, import, réglages, aperçu) */
 (function () {
   const P = PH.pricing, R = PH.render, X = PH.exporter;
-  const VERSION = '0.4.0';
+  const VERSION = '0.4.1';
   const KEY = 'prixhook.v2';
   const DEF = { cut: true };
 

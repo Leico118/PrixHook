@@ -98,18 +98,8 @@ PH.importer = (function () {
         const page = await pdf.getPage(p);
         const vp = page.getViewport({ scale: 1 });
 
-        /* 1. Vrai texte (PDF numérique) */
-        const tc = await page.getTextContent();
-        const items = tc.items.filter(i => i.str && i.str.trim()).map(i => {
-          const h = Math.hypot(i.transform[2], i.transform[3]);
-          return { s: i.str, x: i.transform[4], y: vp.height - i.transform[5] - h, w: i.width, h };
-        });
-        if (/SKU/i.test(items.map(i => i.s).join(' '))) {
-          const r = PH.parser.parse(items);
-          if (r.oldPrice > 0 && r.newPrice > 0 && r.name) { results.push({ ...r, source }); continue; }
-        }
-
-        /* 2. Page scannée : rendu à 300 dpi puis lecture par zones */
+        /* 1. Rendu à 300 dpi : si c'est une affiche Fnac (même scannée), lecture par zones de l'image.
+              Le texte caché ajouté par les scanners est faux, il n'est jamais utilisé dans ce cas. */
         const k = 300 / 72;
         const v2 = page.getViewport({ scale: k });
         const canvas = document.createElement('canvas');
@@ -119,12 +109,21 @@ PH.importer = (function () {
         ctx.fillStyle = '#fff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         await page.render({ canvasContext: ctx, viewport: v2 }).promise;
-        page.cleanup();
         if (PH.template.looksLikePoster(canvas, canvas.width, canvas.height)) {
           results.push({ ...await readPoster(canvas), source });
         } else {
-          results.push({ ...PH.parser.parse(await ocrItems(canvas, canvas.width, canvas.height)), source, ocr: true });
+          /* 2. PDF numérique avec vrai texte */
+          const tc = await page.getTextContent();
+          const items = tc.items.filter(i => i.str && i.str.trim()).map(i => {
+            const h = Math.hypot(i.transform[2], i.transform[3]);
+            return { s: i.str, x: i.transform[4], y: vp.height - i.transform[5] - h, w: i.width, h };
+          });
+          const r = PH.parser.parse(items);
+          if (r.oldPrice > 0 && r.newPrice > 0 && r.name && r.name.length > 3) results.push({ ...r, source });
+          /* 3. Sinon OCR général (à vérifier) */
+          else results.push({ ...PH.parser.parse(await ocrItems(canvas, canvas.width, canvas.height)), source, ocr: true });
         }
+        page.cleanup();
         release(canvas);
       } catch (e) {
         results.push({ source, error: e && e.message ? e.message : String(e) });
