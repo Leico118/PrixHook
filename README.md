@@ -12,7 +12,10 @@ PrixHook/
     ├── css/app.css               # interface
     ├── css/tags.css              # balises + page A4
     └── js/
+        ├── libs.js               # chargement des bibliothèques (PDF, OCR)
         ├── pricing.js            # remise % auto
+        ├── parser.js             # lecture d'une affiche (nom, prix, remise, SKU, validité)
+        ├── importer.js           # import PDF (1 page = 1 hook) et photos (OCR)
         ├── render.js             # hooks Black Friday + grille A4
         ├── export.js             # PDF (html2canvas + jsPDF), impression, partage Android
         └── app.js                # saisie, liste, import JSON, réglages, aperçu

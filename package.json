@@ -1,6 +1,6 @@
 {
   "name": "prixhook",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Générateur de balises de prix hook A4 (standard + Black Friday)",
   "scripts": {
