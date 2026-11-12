@@ -1,0 +1,54 @@
+/* PrixHook — hooks Black Friday et page A4 (2 × 6 = 12 hooks de 100 × 48 mm) */
+.page {
+  width: 210mm; height: 296mm; padding: 4mm 5mm;
+  background: #fff; color: #111;
+  display: grid; grid-template-columns: repeat(2, 100mm); grid-template-rows: repeat(6, 48mm);
+  overflow: hidden;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  font-family: 'Poppins', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
+.cell { position: relative; width: 100mm; height: 48mm; padding: 0.8mm; }
+.page.cut .cell { outline: 0.2mm dashed #b5b5b5; outline-offset: -0.1mm; }
+.tag { width: 100%; height: 100%; overflow: hidden; position: relative; }
+
+/* Prix : entier + centimes en exposant */
+.pr { display: inline-flex; align-items: flex-start; line-height: 0.92; font-weight: 800; letter-spacing: -0.03em; }
+.pr .pd { font-size: 0.46em; margin-left: 0.06em; margin-top: 0.06em; letter-spacing: 0; }
+
+.tag.bf {
+  --bf-bg: #262626; --bf-fg: #ffffff; --bf-mute: #bdbdbd; --bf-y: #F5B800;
+  background: var(--bf-bg); color: var(--bf-fg);
+  display: grid; grid-template-columns: 1fr 35mm; grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "logo logo" "name name" "prices badge" "foot foot";
+  padding: 2.2mm 3mm 1.4mm; column-gap: 1.5mm;
+  border: 0.6mm solid #fff; outline: 0.3mm solid #262626;
+}
+.bf-corner { position: absolute; left: 0; top: 0; width: 9mm; height: 7mm;
+  border-left: 1.8mm solid var(--bf-y); border-top: 1.8mm solid var(--bf-y); }
+.bf-logo {
+  grid-area: logo; justify-self: center; display: inline-flex; gap: 1.4mm; align-items: center;
+  background: #fff; border-radius: 1.4mm; padding: 0.3mm 2.2mm 0.1mm;
+  font-family: 'Archivo Black', 'Arial Black', 'Roboto', sans-serif; font-weight: 900;
+  font-size: 10.5pt; line-height: 1.05; letter-spacing: 0.01em;
+  box-shadow: 0 0 0 0.4mm #262626;
+}
+.bf-logo .b { color: #262626; }
+.bf-logo .f { color: var(--bf-y); -webkit-text-stroke: 0.15mm #c99600; }
+.bf-name { flex: none; min-height: 1.08em;
+  grid-area: name; text-align: center; text-transform: uppercase; font-weight: 800;
+  font-size: 10pt; line-height: 1.08; margin-top: 0.8mm;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bf-name.l { font-size: 9pt; }
+.bf-name.xl { font-size: 7.8pt; }
+.bf-prices { grid-area: prices; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 0.8mm; padding: 0.6mm 0 0 2mm; min-width: 0; }
+.bf-old { display: flex; line-height: 0.92; font-size: 21pt; color: var(--bf-mute); position: relative; margin-left: 1mm; }
+.bf-old::after { content: ''; position: absolute; left: -5%; right: -5%; top: 50%; height: 0.8mm; background: var(--bf-fg); transform: rotate(-12deg); }
+.bf-new { display: flex; line-height: 0.92; font-size: 52pt; color: #ececec; }
+.bf-badge { grid-area: badge; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.brush { position: relative; width: 34mm; height: 14mm; display: flex; align-items: center; justify-content: center; }
+.brush-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.brush .pct { position: relative; font-family: 'Archivo Black', 'Arial Black', 'Roboto', sans-serif; font-weight: 900; font-size: 21pt; color: #262626; line-height: 1; }
+.brush .pct sup { font-size: 0.5em; vertical-align: top; position: relative; top: -0.1em; }
+.bf-cap { font-size: 6.5pt; font-weight: 600; text-align: center; line-height: 1.15; margin-top: 0.8mm; }
+.bf-foot { grid-area: foot; min-height: 1.2em; font-size: 5.2pt; color: var(--bf-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
