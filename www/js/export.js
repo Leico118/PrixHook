@@ -2,42 +2,14 @@
 window.PH = window.PH || {};
 
 PH.exporter = (function () {
-  const LIBS = [
-    { test: () => window.html2canvas, local: 'vendor/html2canvas.min.js',
-      cdn: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js' },
-    { test: () => window.jspdf && window.jspdf.jsPDF, local: 'vendor/jspdf.umd.min.js',
-      cdn: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js' }
-  ];
-
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const el = document.createElement('script');
-      el.src = src;
-      el.onload = resolve;
-      el.onerror = () => { el.remove(); reject(new Error(src)); };
-      document.head.appendChild(el);
-    });
-  }
-
-  async function ensureLibs() {
-    for (const lib of LIBS) {
-      if (lib.test()) continue;
-      try { await loadScript(lib.local); } catch (e) { /* pas de copie locale : CDN */ }
-      if (!lib.test()) {
-        try { await loadScript(lib.cdn); } catch (e) { /* géré plus bas */ }
-      }
-      if (!lib.test()) throw new Error('Module PDF introuvable : vérifie ta connexion internet.');
-    }
-  }
-
   function isNative() {
     const c = window.Capacitor;
     return !!(c && c.isNativePlatform && c.isNativePlatform());
   }
 
-  /* pagesHtml : tableau de chaînes HTML, une par page A4 */
+  /* pagesHtml : tableau de chaînes HTML (pages déjà ajustées), une par page A4 */
   async function pdf(pagesHtml, filename, onProgress) {
-    await ensureLibs();
+    await PH.libs.ensure('html2canvas', 'jspdf');
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
 
     const host = document.createElement('div');
@@ -50,6 +22,7 @@ PH.exporter = (function () {
         if (onProgress) onProgress(i + 1, pagesHtml.length);
         host.innerHTML = pagesHtml[i];
         const page = host.firstElementChild;
+        PH.render.fit(page);
         const canvas = await window.html2canvas(page, {
           scale: 3, backgroundColor: '#ffffff', useCORS: true,
           scrollX: 0, scrollY: 0, windowWidth: page.scrollWidth, windowHeight: page.scrollHeight

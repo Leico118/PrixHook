@@ -1,7 +1,7 @@
 /* PrixHook — interface (saisie, liste, import, réglages, aperçu) */
 (function () {
   const P = PH.pricing, R = PH.render, X = PH.exporter;
-  const VERSION = '0.2.0';
+  const VERSION = '0.3.0';
   const KEY = 'prixhook.v2';
   const DEF = { cut: true };
 
@@ -50,7 +50,8 @@
       newPrice: P.parse(o.newPrice ?? o.prixFinal),
       pct: isFinite(pct) ? pct : null,
       validity: String(o.validity ?? o.validite ?? '').trim(),
-      copies: Math.max(1, Math.min(99, parseInt(o.copies ?? o.exemplaires, 10) || 1))
+      copies: Math.max(1, Math.min(99, parseInt(o.copies ?? o.exemplaires, 10) || 1)),
+      check: Array.isArray(o.check) && o.check.length ? o.check : undefined
     };
   }
 
@@ -117,16 +118,23 @@
       list.innerHTML = '<li class="empty-li">Aucun hook pour l\'instant.</li>';
       return;
     }
-    list.innerHTML = state.tags.map(t => `<li data-id="${t.id}">
+    list.innerHTML = state.tags.map(t => {
+      const ok = R.valid(t);
+      const info = ok
+        ? `<s>${P.fmt(t.oldPrice)}</s> → <b>${P.fmt(t.newPrice)}</b> · −${t.pct ?? P.discountPct(t.oldPrice, t.newPrice)} % · ×${t.copies}`
+        : 'Prix manquants : touche ✎ pour compléter';
+      const warn = t.check ? `<div class="li-warn">⚠ À vérifier : ${R.esc(t.check.join(', '))}</div>` : '';
+      return `<li data-id="${t.id}" class="${ok ? '' : 'bad'}${t.check ? ' warn' : ''}">
         <div class="li-main">
-          <div class="li-name">${R.esc(t.name)}</div>
-          <div class="li-info"><s>${P.fmt(t.oldPrice)}</s> → <b>${P.fmt(t.newPrice)}</b> · −${t.pct ?? P.discountPct(t.oldPrice, t.newPrice)} % · ×${t.copies}</div>
+          <div class="li-name">${R.esc(t.name || '(sans nom)')}</div>
+          <div class="li-info">${info}</div>${warn}
         </div>
         <div class="li-act">
           <button data-act="edit" title="Modifier">✎</button>
           <button data-act="dup" title="Dupliquer">⧉</button>
           <button data-act="del" title="Supprimer">✕</button>
-        </div></li>`).join('');
+        </div></li>`;
+    }).join('');
   }
 
   function onListClick(e) {
@@ -171,6 +179,39 @@
     if (ok) $('#importText').value = '';
   }
 
+  async function onFiles(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    const msg = $('#fileMsg'), btn = $('#fileBtn');
+    btn.classList.add('busy');
+    msg.className = 'msg';
+    try {
+      const res = await PH.importer.importFiles(files, txt => { msg.textContent = txt; });
+      let ok = 0, toCheck = 0;
+      const errors = [];
+      res.forEach(r => {
+        if (r.error) { errors.push(`${r.source} : ${r.error}`); return; }
+        const check = [...(r.warnings || [])];
+        if (r.ocr) check.unshift('lu sur photo, contrôle les prix');
+        const t = normalize({ ...r, check });
+        state.tags.push(t);
+        ok++;
+        if (t.check) toCheck++;
+      });
+      save();
+      renderAll();
+      msg.textContent = `${ok} hook(s) créé(s)` + (toCheck ? `, dont ${toCheck} à vérifier (⚠)` : '') + '.' +
+        (errors.length ? ' Erreurs : ' + errors.join(' · ') : '');
+      if (errors.length && !ok) msg.className = 'msg err';
+    } catch (err) {
+      msg.className = 'msg err';
+      msg.textContent = 'Erreur : ' + (err && err.message ? err.message : err);
+    } finally {
+      btn.classList.remove('busy');
+    }
+  }
+
   async function onBackup() {
     const json = JSON.stringify(state.tags.map(({ id, ...t }) => t), null, 1);
     const msg = $('#importMsg');
@@ -206,15 +247,17 @@
   let pagesCache = [];
 
   function renderPreview() {
-    pagesCache = R.pages(state.tags, state.settings);
-    $('#sheet').innerHTML = pagesCache.join('');
-    $('#pageCount').textContent = `(${pagesCache.length})`;
+    const html = R.pages(state.tags, state.settings);
+    $('#sheet').innerHTML = html.join('');
+    $('#pageCount').textContent = `(${html.length})`;
     fitPreview();
   }
 
   function fitPreview() {
     const wrap = $('#previewWrap'), sheet = $('#sheet');
     if (!wrap.offsetWidth) return;
+    R.fit(sheet);
+    pagesCache = Array.from(sheet.children).map(p => p.outerHTML);
     const scale = Math.min(1, wrap.clientWidth / (210 * 96 / 25.4));
     sheet.style.transform = `scale(${scale})`;
     wrap.style.height = (sheet.scrollHeight * scale) + 'px';
@@ -233,7 +276,8 @@
 
   async function onPdf() {
     const msg = $('#pdfMsg'), btn = $('#pdfBtn');
-    if (!state.tags.length) { msg.textContent = 'Aucun hook à exporter.'; return; }
+    fitPreview();
+    if (!state.tags.some(R.valid)) { msg.textContent = 'Aucun hook complet à exporter.'; return; }
     btn.disabled = true;
     try {
       await X.pdf(pagesCache, fileName(), (i, n) => { msg.textContent = `Génération de la page ${i}/${n}…`; });
@@ -265,7 +309,9 @@
     $('#importBtn').addEventListener('click', onImport);
     $('#exportJson').addEventListener('click', onBackup);
     $('#pdfBtn').addEventListener('click', onPdf);
-    $('#printBtn').addEventListener('click', () => X.print(pagesCache));
+    $('#printBtn').addEventListener('click', () => { fitPreview(); X.print(pagesCache); });
+    $('#fileInput').addEventListener('change', onFiles);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitPreview);
     if (X.isNative()) $('#printBtn').hidden = true;
     $('#setCut').checked = state.settings.cut;
     $('#setCut').addEventListener('change', () => {

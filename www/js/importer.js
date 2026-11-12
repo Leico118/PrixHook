@@ -1,0 +1,118 @@
+/* PrixHook — import d'affiches : PDF (1 page A4 = 1 hook) ou images (OCR) */
+window.PH = window.PH || {};
+
+PH.importer = (function () {
+  let ocrWorker = null;
+
+  async function getOcr() {
+    await PH.libs.ensure('tesseract');
+    if (!ocrWorker) {
+      ocrWorker = await window.Tesseract.createWorker('fra');
+      await ocrWorker.setParameters({ tessedit_pageseg_mode: '11' });
+    }
+    return ocrWorker;
+  }
+
+  function scaled(source, w, h, k) {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * k));
+    c.height = Math.max(1, Math.round(h * k));
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(source, 0, 0, c.width, c.height);
+    return c;
+  }
+
+  function overlap(a, b) {
+    const ix = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+    const iy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+    return ix * iy > 0.4 * Math.min(a.w * a.h, b.w * b.h);
+  }
+
+  /* OCR à deux échelles (gros prix + petits textes), mots fusionnés en coordonnées d'origine */
+  async function ocrItems(source, w, h, onStep) {
+    const worker = await getOcr();
+    const base = Math.min(1, 1800 / Math.max(w, h));
+    const words = [];
+    for (const k of [base * 0.5, base]) {
+      if (onStep) onStep();
+      const { data } = await worker.recognize(scaled(source, w, h, k));
+      (data.words || []).forEach(wd => {
+        if (wd.confidence < 40 || !wd.text.trim()) return;
+        words.push({
+          s: wd.text, c: wd.confidence,
+          x: wd.bbox.x0 / k, y: wd.bbox.y0 / k,
+          w: (wd.bbox.x1 - wd.bbox.x0) / k, h: (wd.bbox.y1 - wd.bbox.y0) / k
+        });
+      });
+    }
+    const out = [];
+    words.sort((a, b) => b.c - a.c).forEach(wd => { if (!out.some(o => overlap(o, wd))) out.push(wd); });
+    return out;
+  }
+
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('image illisible'));
+      img.src = url;
+    });
+  }
+
+  async function fromPdf(file, report) {
+    await PH.libs.ensure('pdfjs');
+    const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const results = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      report(`${file.name} : page ${p}/${pdf.numPages}…`);
+      const page = await pdf.getPage(p);
+      const vp = page.getViewport({ scale: 1 });
+      const tc = await page.getTextContent();
+      let items = tc.items.filter(i => i.str && i.str.trim()).map(i => {
+        const h = Math.hypot(i.transform[2], i.transform[3]);
+        return { s: i.str, x: i.transform[4], y: vp.height - i.transform[5] - h, w: i.width, h };
+      });
+      let ocr = false;
+      if (!items.some(i => /\d/.test(i.s))) {
+        const k = 1800 / Math.max(vp.width, vp.height);
+        const v2 = page.getViewport({ scale: k });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(v2.width);
+        canvas.height = Math.round(v2.height);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: v2 }).promise;
+        report(`${file.name} : page ${p}/${pdf.numPages} (lecture OCR)…`);
+        items = await ocrItems(canvas, canvas.width, canvas.height);
+        ocr = true;
+      }
+      results.push({ ...PH.parser.parse(items), source: `${file.name} p.${p}`, ocr });
+    }
+    return results;
+  }
+
+  async function fromImage(file, report) {
+    report(`${file.name} : lecture OCR…`);
+    const img = await loadImage(file);
+    const items = await ocrItems(img, img.naturalWidth, img.naturalHeight);
+    URL.revokeObjectURL(img.src);
+    return [{ ...PH.parser.parse(items), source: file.name, ocr: true }];
+  }
+
+  async function importFiles(files, report) {
+    const out = [];
+    for (const f of files) {
+      try {
+        if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) out.push(...await fromPdf(f, report));
+        else if (/^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/i.test(f.name)) out.push(...await fromImage(f, report));
+        else out.push({ source: f.name, error: 'format non pris en charge' });
+      } catch (e) {
+        out.push({ source: f.name, error: e && e.message ? e.message : String(e) });
+      }
+    }
+    return out;
+  }
+
+  return { importFiles };
+})();

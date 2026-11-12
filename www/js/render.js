@@ -55,7 +55,7 @@ PH.render = (function () {
   }
 
   function pages(tags, s) {
-    const all = expand(tags);
+    const all = expand(tags.filter(valid));
     const list = [];
     for (let i = 0; i < all.length; i += PER_PAGE) list.push(all.slice(i, i + PER_PAGE));
     if (!list.length) list.push([]);
@@ -67,5 +67,26 @@ PH.render = (function () {
     );
   }
 
-  return { tag, pages, expand, esc, PER_PAGE };
+  /* Réduit les prix d'un hook tant qu'ils débordent de leur zone (à appeler sur un élément affiché) */
+  function fit(root) {
+    root.querySelectorAll('.tag.bf').forEach(t => {
+      const box = t.querySelector('.bf-prices');
+      const nw = t.querySelector('.bf-new'), od = t.querySelector('.bf-old');
+      if (!box || !box.clientWidth) return;
+      nw.style.fontSize = ''; od.style.fontSize = '';
+      const f1 = parseFloat(getComputedStyle(nw).fontSize), f2 = parseFloat(getComputedStyle(od).fontSize);
+      let k = 1;
+      for (let i = 0; i < 15 && (box.scrollWidth > box.clientWidth + 0.5 || box.scrollHeight > box.clientHeight + 0.5); i++) {
+        k *= 0.94;
+        nw.style.fontSize = (f1 * k) + 'px';
+        od.style.fontSize = (f2 * k) + 'px';
+      }
+    });
+  }
+
+  function valid(t) {
+    return P.parse(t.oldPrice) > 0 && P.parse(t.newPrice) > 0;
+  }
+
+  return { tag, pages, expand, esc, fit, valid, PER_PAGE };
 })();
