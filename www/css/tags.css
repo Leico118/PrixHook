@@ -41,10 +41,10 @@
 }
 .bf-name.l { font-size: 9pt; }
 .bf-name.xl { font-size: 7.8pt; }
-.bf-prices { grid-area: prices; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 0.8mm; padding: 0.6mm 0 0 2mm; min-width: 0; }
-.bf-old { display: flex; line-height: 0.92; font-size: 21pt; color: var(--bf-mute); position: relative; margin-left: 1mm; }
-.bf-old::after { content: ''; position: absolute; left: -5%; right: -5%; top: 50%; height: 0.8mm; background: var(--bf-fg); transform: rotate(-12deg); }
-.bf-new { display: flex; line-height: 0.92; font-size: 52pt; color: #ececec; }
+.bf-prices { grid-area: prices; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 3mm; padding: 0.8mm 1mm 0 1mm; min-width: 0; min-height: 0; overflow: hidden; }
+.bf-old { flex: none; display: flex; line-height: 0.92; font-size: 15pt; color: var(--bf-mute); position: relative; padding: 0 0.5mm; }
+.bf-old::after { content: ''; position: absolute; left: -4%; right: -4%; top: 48%; height: 0.6mm; background: var(--bf-fg); transform: rotate(-14deg); }
+.bf-new { flex: none; display: flex; line-height: 0.92; font-size: 42pt; color: #ececec; }
 .bf-badge { grid-area: badge; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .brush { position: relative; width: 34mm; height: 14mm; display: flex; align-items: center; justify-content: center; }
 .brush-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
