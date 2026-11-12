@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1c1c1c">
+  <title>PrixHook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/tags.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="mark">PH</span><span>PrixHook</span><small id="ver"></small></div>
+    <nav class="tabs">
+      <button data-tab="edit" class="on">Saisie</button>
+      <button data-tab="preview">Aperçu A4 <span id="pageCount"></span></button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="tab-edit" class="tab on">
+      <div class="card">
+        <form id="form" autocomplete="off" novalidate>
+          <label>Nom du produit<input name="name" placeholder="JBL Tune 735BT Noir 76h d'autonomie"></label>
+          <label>SKU<input name="sku" inputmode="numeric" placeholder="15677945"></label>
+          <div class="row">
+            <label>Prix barré<input name="oldPrice" inputmode="decimal" placeholder="79.95"></label>
+            <label>Prix final<input name="newPrice" inputmode="decimal" placeholder="49.95"></label>
+          </div>
+          <div class="row">
+            <label>Remise %<input name="pct" inputmode="numeric" placeholder="auto"></label>
+            <label>Exemplaires<input name="copies" type="number" min="1" max="99" value="1"></label>
+          </div>
+          <label>Validité<input name="validity" placeholder="Offre valable du 20.11 au 31.12.2026"></label>
+          <p class="calc" id="calcBf"></p>
+          <p class="msg err" id="formMsg"></p>
+          <div class="actions">
+            <button type="submit" class="primary" id="submitBtn">Ajouter le hook</button>
+            <button type="button" class="ghost" id="cancelEdit" hidden>Annuler</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Hooks <span id="count"></span></h2>
+          <button type="button" class="ghost danger" id="clearAll">Tout effacer</button>
+        </div>
+        <ul id="list" class="list"></ul>
+      </div>
+
+      <details class="card">
+        <summary>Importer (JSON fourni par Claude)</summary>
+        <textarea id="importText" rows="6" placeholder='[{"name":"JBL Tune 735BT","sku":"15677945","oldPrice":79.95,"newPrice":49.95,"pct":37}]'></textarea>
+        <div class="actions">
+          <button type="button" class="primary" id="importBtn">Importer</button>
+          <button type="button" class="ghost" id="exportJson">Copier la sauvegarde</button>
+        </div>
+        <p class="msg" id="importMsg"></p>
+      </details>
+
+      <details class="card">
+        <summary>Réglages</summary>
+        <label class="check"><input type="checkbox" id="setCut"> Traits de coupe</label>
+      </details>
+    </section>
+
+    <section id="tab-preview" class="tab">
+      <div class="toolbar">
+        <button type="button" class="primary" id="pdfBtn">Exporter en PDF</button>
+        <button type="button" class="ghost" id="printBtn">Imprimer</button>
+      </div>
+      <p class="msg" id="pdfMsg"></p>
+      <div id="previewWrap"><div id="sheet"></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="printArea"></div>
+
+<script src="js/pricing.js"></script>
+<script src="js/render.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
