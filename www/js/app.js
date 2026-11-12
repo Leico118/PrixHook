@@ -1,7 +1,7 @@
 /* PrixHook — interface (saisie, liste, import, réglages, aperçu) */
 (function () {
   const P = PH.pricing, R = PH.render, X = PH.exporter;
-  const VERSION = '0.3.0';
+  const VERSION = '0.4.0';
   const KEY = 'prixhook.v2';
   const DEF = { cut: true };
 
@@ -44,7 +44,7 @@
       ? null : parseInt(String(pctRaw).replace(/\D/g, ''), 10);
     return {
       id: o.id || uid(),
-      name: String(o.name ?? o.nom ?? '').trim(),
+      name: cleanText(o.name ?? o.nom),
       sku: String(o.sku ?? '').trim(),
       oldPrice: P.parse(o.oldPrice ?? o.prixBarre),
       newPrice: P.parse(o.newPrice ?? o.prixFinal),
@@ -53,6 +53,15 @@
       copies: Math.max(1, Math.min(99, parseInt(o.copies ?? o.exemplaires, 10) || 1)),
       check: Array.isArray(o.check) && o.check.length ? o.check : undefined
     };
+  }
+
+  /* Nom : uniquement lettres, chiffres, espaces, virgules, points et apostrophes */
+  function cleanText(s) {
+    return String(s ?? '')
+      .replace(/\u2019/g, "'")
+      .replace(/[^A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF0-9,.' ]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function isValid(t) {
@@ -283,7 +292,8 @@
       await X.pdf(pagesCache, fileName(), (i, n) => { msg.textContent = `Génération de la page ${i}/${n}…`; });
       msg.textContent = 'PDF prêt.';
     } catch (e) {
-      msg.textContent = 'Erreur : ' + (e && e.message ? e.message : e);
+      const m = e && e.message ? e.message : String(e);
+      msg.textContent = /cancel/i.test(m) ? 'Partage annulé.' : 'Erreur : ' + m;
     } finally {
       btn.disabled = false;
     }
