@@ -100,9 +100,9 @@ button.ghost.danger { color: var(--red); padding: 7px 10px; font-size: 12px; }
 .li-act button { width: 34px; height: 34px; border: 0; background: none; color: var(--mute); font-size: 16px; border-radius: 8px; }
 .li-act button:active { background: var(--bg); }
 
-#previewWrap { position: relative; overflow: hidden; margin-top: 12px; }
-#sheet { transform-origin: top left; width: 210mm; }
-#sheet .page { margin-bottom: 6mm; box-shadow: 0 2px 14px rgba(0,0,0,.18); }
+#previewWrap { margin-top: 12px; }
+#sheet { width: 100%; }
+.page-canvas { display: block; width: 100%; height: auto; margin-bottom: 14px; box-shadow: 0 2px 14px rgba(0,0,0,.18); background: #fff; }
 
 #printArea { display: none; }
 .export-host { position: fixed; left: 0; top: 0; z-index: -10; pointer-events: none; }
@@ -112,8 +112,8 @@ button.ghost.danger { color: var(--red); padding: 7px 10px; font-size: 12px; }
   body { background: #fff; }
   #app { display: none !important; }
   #printArea { display: block; }
-  #printArea .page { break-after: page; }
-  #printArea .page:last-child { break-after: auto; }
+  #printArea .print-page { display: block; width: 210mm; height: 297mm; break-after: page; }
+  #printArea .print-page:last-child { break-after: auto; }
 }
 
 /* Import d'affiches */
